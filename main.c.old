@@ -1,0 +1,103 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+
+#define MAX_SIZE 1024
+
+void generate_random_array(int *array, int size, int min_val, int max_val) {
+    int range = max_val - min_val + 1;
+
+    for (int i = 0; i < size; i++) {
+        int num;
+        int is_unique;
+
+        // Générer un nombre unique
+        do {
+            is_unique = 1;
+            num = rand() % range + min_val;
+
+            for (int j = 0; j < i; j++) {
+                if (array[j] == num) {
+                    is_unique = 0;
+                    break;
+                }
+            }
+        } while (!is_unique);
+
+        array[i] = num;
+    }
+}
+
+void execute_push_swap_checker(int *array, int size, const char *push_swap_path, const char *checker_path) {
+    char command[MAX_SIZE] = {0};
+    char result[MAX_SIZE] = {0};
+    FILE *push_swap_output;
+
+    // Construire la commande pour push_swap
+    strcat(command, push_swap_path);
+    for (int i = 0; i < size; i++) {
+        char buffer[16];
+        sprintf(buffer, " %d", array[i]);
+        strcat(command, buffer);
+    }
+
+    // Ouvrir push_swap et récupérer sa sortie
+    push_swap_output = popen(command, "r");
+    if (!push_swap_output) {
+        perror("Erreur lors de l'exécution de push_swap");
+        exit(EXIT_FAILURE);
+    }
+
+    // Lire la sortie de push_swap
+    char push_swap_instructions[MAX_SIZE] = {0};
+    while (fgets(result, sizeof(result), push_swap_output) != NULL) {
+        strcat(push_swap_instructions, result);
+    }
+    pclose(push_swap_output);
+
+    // Préparer la commande pour checker
+    strcat(command, " | ");
+    strcat(command, checker_path);
+
+    // Ajouter les instructions en entrée standard de checker
+    FILE *checker_output = popen(command, "w");
+    if (!checker_output) {
+        perror("Erreur lors de l'exécution de checker");
+        exit(EXIT_FAILURE);
+    }
+
+    fputs(push_swap_instructions, checker_output);
+    pclose(checker_output);
+}
+
+int main() {
+    const char *push_swap_path = "./push_swap";
+    const char *checker_path = "./checker";
+    int num_tests = 10;
+    int array_size = 5;
+    int min_val = 0;
+    int max_val = 100;
+
+    // Initialiser le générateur de nombres aléatoires
+    srand(time(NULL));
+
+    for (int i = 0; i < num_tests; i++) {
+        int array[array_size];
+
+        // Générer un tableau aléatoire
+        generate_random_array(array, array_size, min_val, max_val);
+
+        printf("Test %d: Tableau généré -> ", i + 1);
+        for (int j = 0; j < array_size; j++) {
+            printf("%d ", array[j]);
+        }
+        printf("\n");
+
+        // Lancer push_swap et checker
+        execute_push_swap_checker(array, array_size, push_swap_path, checker_path);
+    }
+
+    return 0;
+}
