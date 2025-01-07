@@ -1,10 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <unistd.h>
 #include <time.h>
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <string.h>
+
+#define BLUE "\033[34m"
+#define GREEN "\033[32m"
+#define RED "\033[31m"
+#define YELLOW "\033[33m"
+#define PURPLE "\033[35m"
+#define RESET "\033[0m"
 
 int	*generate_random_array(int size)
 {
@@ -16,19 +24,9 @@ int	*generate_random_array(int size)
 	if (!array)
 		return (NULL);
 
-	for (i = 0; i < size; i++)
-		array[i] = i + 1;
-
 	srand(time(NULL) + r++);
-	for (i = size - 1; i > 0; i--)
-	{
-		j = rand() % (i + 1);
-		temp = array[i];
-		array[i] = array[j];
-		array[j] = temp;
-	}
-	array[0] = 0;
-
+	for (i = size - 1; i >= 0; i--)
+		array[i] = rand() - RAND_MAX / 2;
 	return (array);
 }
 
@@ -62,32 +60,30 @@ void	exec_push_swap(char **args)
 	pid_t pid;
 
 	if (pipe(pipefd) == -1) {
-		perror("Erreur lors de la création du pipe");
+		perror("Error creating pipe");
 		return;
 	}
 
 	pid = fork();
 	if (pid == -1) {
-		perror("Erreur lors de la création du processus");
+		perror("Error creating process");
 		return;
 	}
 
 	if (pid == 0) {
-		// Processus enfant
-		close(pipefd[0]); // Fermer le côté lecture
+		close(pipefd[0]);
 		dup2(pipefd[1], STDOUT_FILENO);
-		close(pipefd[1]); // Fermer le côté écriture après redirection
+		close(pipefd[1]);
 
 		execvp("./push_swap", args);
-		perror("Erreur lors de l'exécution de ./push_swap");
+		perror("Error executing ./push_swap");
 		exit(EXIT_FAILURE);
 	} else {
-		// Processus parent
-		close(pipefd[1]); // Fermer le côté écriture
+		close(pipefd[1]);
 
 		int filefd = open("output.txt", O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		if (filefd == -1) {
-			perror("Erreur lors de l'ouverture du fichier");
+			perror("Error opening file");
 			close(pipefd[0]);
 			return;
 		}
@@ -97,64 +93,56 @@ void	exec_push_swap(char **args)
 
 		while ((bytesRead = read(pipefd[0], buffer, sizeof(buffer))) > 0) {
 			if (write(filefd, buffer, bytesRead) == -1) {
-				perror("Erreur lors de l'écriture dans le fichier");
+				perror("Error writing to file");
 				close(pipefd[0]);
 				close(filefd);
 				return;
 			}
 		}
 
-		// Nettoyer
 		close(pipefd[0]);
 		close(filefd);
 
-		// Attendre la fin de l'enfant
 		wait(NULL);
 	}
 }
 
 int	exec_checker(char **args)
 {
-	int pipefd[2]; // Pipe pour capturer la sortie de checker
+	int pipefd[2];
 	pid_t pid;
 
 	if (pipe(pipefd) == -1) {
-		perror("Erreur lors de la création du pipe");
+		perror("Error creating pipe");
 		return -1;
 	}
 
 	pid = fork();
 	if (pid == -1) {
-		perror("Erreur lors de la création du processus");
+		perror("Error creating process");
 		return -1;
 	}
 
 	if (pid == 0) {
-		// Processus enfant
-		close(pipefd[0]); // Fermer l'extrémité lecture du pipe
+		close(pipefd[0]);
 
-		// Rediriger la sortie standard vers le pipe
 		dup2(pipefd[1], STDOUT_FILENO);
-		close(pipefd[1]); // Fermer l'extrémité écriture après redirection
+		close(pipefd[1]);
 
-		// Ouvrir le fichier output.txt et rediriger son contenu vers stdin
 		int filefd = open("output.txt", O_RDONLY);
 		if (filefd == -1) {
-			perror("Erreur lors de l'ouverture de output.txt");
+			perror("Error opening output.txt");
 			exit(EXIT_FAILURE);
 		}
 		dup2(filefd, STDIN_FILENO);
-		close(filefd); // Fermer le fichier après redirection
+		close(filefd);
 
-		// Exécuter checker
 		execvp("./checker", args);
-		perror("Erreur lors de l'exécution de ./checker");
+		perror("Error executing ./checker");
 		exit(EXIT_FAILURE);
 	} else {
-		// Processus parent
-		close(pipefd[1]); // Fermer l'extrémité écriture
+		close(pipefd[1]);
 
-		// Lire et capturer la sortie du processus enfant
 		char buffer[128];
 		ssize_t bytesRead;
 
@@ -170,24 +158,25 @@ int	exec_checker(char **args)
 			}
 			if (memcmp(buffer, "Error", 5) == 0) {
 				close(pipefd[0]);
+				exit(EXIT_FAILURE);
 				return -1;
 			}
 		}
 
-		close(pipefd[0]); // Fermer l'extrémité lecture
+		close(pipefd[0]);
 		return -1;
 	}
 	return -1;
 }
 
-int	count_lines(const char *filename) {
+unsigned int	count_lines(const char *filename) {
 	FILE *file = fopen(filename, "r");
 	if (!file) {
-		perror("Erreur lors de l'ouverture du fichier");
+		perror("Error opening file");
 		return -1;
 	}
 
-	int lines = 0;
+	unsigned int lines = 0;
 	int c;
 
 	while ((c = fgetc(file)) != EOF) {
@@ -200,52 +189,107 @@ int	count_lines(const char *filename) {
 	return lines;
 }
 
+int parse_int(const char *arg) {
+	char *endptr;
+	int value = strtol(arg, &endptr, 10);
+	if (*endptr != '\0') {
+		fprintf(stderr, "Error : '%s' is not a valable integer.\n", arg);
+		exit(EXIT_FAILURE);
+	}
+	return value;
+}
 
-int main() {
-	int	*array;
-	int	min;
-	int	max;
+void print_help() {
+	printf("Usage: ./program [options]\n");
+	printf("Options :\n");
+	printf("  -n <tests>     Number of tests per array size (default: 10, -1 to infinite)\n");
+	printf("  -s <start>     Minimum array size (default: 1)\n");
+	printf("  -e <end>       Maximum array size (default: 500)\n");
+	printf("  -st <steps>    Testing steps (default: 1)\n");
+	printf("  -l <limit>     Limit of operations to show a warning (default: 5500)\n");
+	printf("  -h             Display this help message\n");
+	exit(0);
+}
 
-	for (int i = 1; i <= 500; i++) {
-		printf("Testing with \033[35m%d\033[0m elements :\n", i);
-		min = -1;
-		max = -1;
-		for (int j = 0; j < 10; j++)
-		{
+int main(int argc, char **argv) {
+	unsigned int num_tests = 10;
+	int start = 1;
+	int end = 500;
+	unsigned int steps = 1;
+	unsigned int limit = 5500;
+
+	for (int i = 1; i < argc; i++) {
+		if (strcmp(argv[i], "-n") == 0 && i + 1 < argc) {
+			num_tests = (unsigned int)parse_int(argv[++i]);
+		} else if (strcmp(argv[i], "-s") == 0 && i + 1 < argc) {
+			start = parse_int(argv[++i]);
+		} else if (strcmp(argv[i], "-e") == 0 && i + 1 < argc) {
+			end = parse_int(argv[++i]);
+		} else if (strcmp(argv[i], "-st") == 0 && i + 1 < argc) {
+			steps = (unsigned int)parse_int(argv[++i]);
+		} else if (strcmp(argv[i], "-l") == 0 && i + 1 < argc) {
+			limit = (unsigned int)parse_int(argv[++i]);
+		} else if (strcmp(argv[i], "-h") == 0) {
+			print_help();
+		} else {
+			fprintf(stderr, "Unknown option : %s\n", argv[i]);
+			print_help();
+		}
+	}
+
+	if (start > end) {
+		fprintf(stderr, "Error : min size (-s) should be <= of max size (-e).\n");
+		return EXIT_FAILURE;
+	}
+
+	int *array;
+	for (int i = start; i <= end; i += steps) {
+		printf("Testing with " PURPLE "%d" RESET " elements:\n", i);
+		int min = -1, max = -1;
+
+		for (unsigned int j = 0; j < num_tests; j++) {
 			array = generate_random_array(i);
 			if (!array)
-				return (1);
+				return EXIT_FAILURE;
 
-			char	*args[502] = { "./push_swap", NULL };
+			char *args[1002] = {"./push_swap", NULL};
 			add_int_tab_args(args, array, i);
 			exec_push_swap(args);
 
-			int nb_lines = count_lines("output.txt");
+			unsigned int nb_lines = count_lines("output.txt");
 			if (min == -1 || nb_lines < min)
 				min = nb_lines;
 			if (max == -1 || nb_lines > max)
 				max = nb_lines;
 
 			args[0] = "./checker";
-			switch (exec_checker(args))
-			{
-			case -1:
-				write(1, "\033[31m[Error]\033[0m ", 18);
-				break;
-			case 0:
-				write(1, "\033[32m[OK]\033[0m ", 15);
-				break;
-			case 1:
-				write(1, "\033[32m[KO]\033[0m ", 15);
-				break;
-			default:
-				break;
+			switch (exec_checker(args)) {
+				case -1:
+					write(1, RED "[Error] " RESET, 18);
+					break;
+				case 0:
+					if (nb_lines > limit)
+						write(1, YELLOW, 6);
+					else
+						write(1, GREEN, 6);
+					write(1, "[OK] " RESET, 10);
+					break;
+				case 1:
+					write(1, RED "[KO] " RESET, 15);
+					break;
+				default:
+					break;
+			}
+
+			int k = 1;
+			while (args[k]) {
+				free(args[k]);
+				k++;
 			}
 
 			free(array);
 		}
-		write(1, "\n", 1);
-		printf("Min: %d, Max: %d\n\n", min, max);
+		printf("\nMin: " GREEN "%d" RESET ", Max: " YELLOW "%d" RESET "\n\n", min, max);
 	}
 
 	return 0;
