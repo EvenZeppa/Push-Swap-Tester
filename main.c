@@ -17,7 +17,7 @@
 int	*generate_random_array(int size)
 {
 	int	*array;
-	int	i, j, temp;
+	int	i;
 	static int r = 0;
 
 	array = malloc(sizeof(int) * size);
@@ -257,9 +257,9 @@ int main(int argc, char **argv) {
 			exec_push_swap(args);
 
 			unsigned int nb_lines = count_lines("output.txt");
-			if (min == -1 || nb_lines < min)
+			if (min == -1 || nb_lines < (unsigned int)min)
 				min = nb_lines;
-			if (max == -1 || nb_lines > max)
+			if (max == -1 || nb_lines > (unsigned int)max)
 				max = nb_lines;
 
 			args[0] = "./checker";
@@ -290,6 +290,12 @@ int main(int argc, char **argv) {
 			free(array);
 		}
 		printf("\nMin: " GREEN "%d" RESET ", Max: " YELLOW "%d" RESET "\n\n", min, max);
+	}
+
+	if (remove("output.txt") == 0) {
+		printf("File deleted successfully.\n");
+	} else {
+		perror("Error deleting the file");
 	}
 
 	return 0;
