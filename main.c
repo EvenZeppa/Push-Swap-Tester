@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <string.h>
 
+// Define color codes for console output
 #define BLUE "\033[34m"
 #define GREEN "\033[32m"
 #define RED "\033[31m"
@@ -14,10 +15,10 @@
 #define PURPLE "\033[35m"
 #define RESET "\033[0m"
 
-int	*generate_random_array(int size)
-{
-	int	*array;
-	int	i;
+// Function to generate a random array of integers
+int *generate_random_array(int size) {
+	int *array;
+	int i;
 	static int r = 0;
 
 	array = malloc(sizeof(int) * size);
@@ -30,32 +31,31 @@ int	*generate_random_array(int size)
 	return (array);
 }
 
-void	add_str_arg(char **args, char *str)
-{
+// Function to add a string argument to an array of arguments
+void add_str_arg(char **args, char *str) {
 	while (*args)
 		args++;
 	*args = str;
 }
 
-void	add_int_tab_args(char **args, int *array, int size)
-{
-	int		i;
-	char	*str;
+// Function to add integer array elements as string arguments
+void add_int_tab_args(char **args, int *array, int size) {
+	int i;
+	char *str;
 
 	while (*args)
 		args++;
-	for (i = 0; i < size; i++)
-	{
+	for (i = 0; i < size; i++) {
 		str = malloc(sizeof(char) * 12);
 		if (!str)
-			return ;
+			return;
 		sprintf(str, "%d", array[i]);
 		args[i] = str;
 	}
 }
 
-void	exec_push_swap(char **args)
-{
+// Function to execute the push_swap program
+void exec_push_swap(char **args) {
 	int pipefd[2];
 	pid_t pid;
 
@@ -107,8 +107,8 @@ void	exec_push_swap(char **args)
 	}
 }
 
-int	exec_checker(char **args)
-{
+// Function to execute the checker program
+int exec_checker(char **args) {
 	int pipefd[2];
 	pid_t pid;
 
@@ -169,7 +169,8 @@ int	exec_checker(char **args)
 	return -1;
 }
 
-unsigned int	count_lines(const char *filename) {
+// Function to count the number of lines in a file
+unsigned int count_lines(const char *filename) {
 	FILE *file = fopen(filename, "r");
 	if (!file) {
 		perror("Error opening file");
@@ -189,6 +190,7 @@ unsigned int	count_lines(const char *filename) {
 	return lines;
 }
 
+// Function to parse an integer from a string argument
 int parse_int(const char *arg) {
 	char *endptr;
 	int value = strtol(arg, &endptr, 10);
@@ -199,6 +201,7 @@ int parse_int(const char *arg) {
 	return value;
 }
 
+// Function to print the help message
 void print_help() {
 	printf("Usage: ./program [options]\n");
 	printf("Options :\n");
@@ -211,6 +214,7 @@ void print_help() {
 	exit(0);
 }
 
+// Main function
 int main(int argc, char **argv) {
 	unsigned int num_tests = 10;
 	int start = 1;
@@ -292,11 +296,8 @@ int main(int argc, char **argv) {
 		printf("\nMin: " GREEN "%d" RESET ", Max: " YELLOW "%d" RESET "\n\n", min, max);
 	}
 
-	if (remove("output.txt") == 0) {
-		printf("File deleted successfully.\n");
-	} else {
+	if (remove("output.txt"))
 		perror("Error deleting the file");
-	}
 
 	return 0;
 }

@@ -13,4 +13,6 @@ $(NAME):
 clean:
 	rm -f $(NAME)
 
+fclean: clean
+
 re: clean all
