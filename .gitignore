@@ -6,3 +6,5 @@ push_swap
 
 ft_lib/src/*/*.o
 ft_lib/lib/libft.a
+
+output.txt
